@@ -1,0 +1,28 @@
+#!/bin/bash
+ 
+# Redirect output to stderr.
+exec 1>&2
+ 
+banned=(put banned words here no spaces allowed)
+keywords_for_grep=$(printf "|%s" "${banned[@]}")
+keywords_for_grep=${keywords_for_grep:1}
+files_changed=`git diff-index --cached --name-only HEAD --`
+`git grep -q -E "$keywords_for_grep" $files_changed`
+results=$?
+ 
+if [ $results -eq 0 ]
+then
+  echo "The following lines contain banned words:"
+  for FILE in ${files_changed[*]} ; do
+    for word in ${banned[*]} ; do
+      `git grep -q $word $FILE`
+      result_for_file=$?
+      if [ $result_for_file -eq 0 ]
+      then
+        LINE=`git grep -n $word $FILE | awk -F ":" '{print $2}'`
+        echo "$FILE contains $word at line $LINE."
+      fi
+    done
+  done
+  exit 1
+fi
